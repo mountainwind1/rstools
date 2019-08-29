@@ -28,7 +28,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas = self.labelList.canvas = Canvas(
             epsilon=self._config['epsilon'],
         )
-        self.canvas.zoomRequest.connect(self.zoomRequest)
+        #self.canvas.zoomRequest.connect(self.zoomRequest)
         scrollArea = QtWidgets.QScrollArea()
         scrollArea.setWidget(self.canvas)
         scrollArea.setWidgetResizable(True)
