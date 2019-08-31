@@ -2,8 +2,12 @@ from PyQt5 import QtCore
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets
 
-#from labelme import QT5
-#from .. import shape
+
+import sys
+import os
+#from labelme impor
+sys.path.append('../')
+sys.path.append(os.getcwd())
 from shape import Shape
 #from rstools.shape import shape
 #import rstools.utils

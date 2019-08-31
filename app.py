@@ -218,3 +218,4 @@ class MainWindow(QtWidgets.QMainWindow):
         # The epsilon does not seem to work too well here.
         w = self.centralWidget().width() - 2.0
         return w / self.canvas.pixmap.width()
+
