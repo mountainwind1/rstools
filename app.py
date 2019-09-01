@@ -4,10 +4,13 @@
 import os.path as osp
 import functools
 from PyQt5 import QtWidgets
+from qtpy import QtCore
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
 #from . import utils
 import utils
+from label_file import LabelFile
+from label_file import LabelFileError
 import config
 from config import get_config
 import widgets
@@ -20,10 +23,16 @@ from widgets import ZoomWidget
 class MainWindow(QtWidgets.QMainWindow):
     __appname__ = "Rs"
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = 0, 1, 2
-    def __init__(self):
-        #__appname__ = "Rs"
+    def __init__(
+        self,
+        config=None,
+        filename=None,):
+
         super(MainWindow, self).__init__()
         self.setWindowTitle(self.__appname__)
+
+        # Whether we need to save or not.
+        self.dirty = False
 
         config = get_config()
         self._config = config
@@ -93,7 +102,10 @@ class MainWindow(QtWidgets.QMainWindow):
             # Set to one to scale to 100% when loading files.
             self.MANUAL_ZOOM: lambda: 1,
         }
+
+        # Store actions for further handling.
         self.actions = utils.struct(
+            pen=open_,
             zoom=zoom, zoomIn=zoomIn, zoomOut=zoomOut, zoomOrg=zoomOrg,
             fitWindow=fitWindow, fitWidth=fitWidth,
             zoomActions=zoomActions,
@@ -108,6 +120,7 @@ class MainWindow(QtWidgets.QMainWindow):
             file=self.menu('&File'),
             edit=self.menu('&Edit'),
             view=self.menu('&View'),
+            recentFiles=QtWidgets.QMenu('Open &Recent'),
         )
         utils.addActions(
             self.menus.file,
@@ -117,14 +130,36 @@ class MainWindow(QtWidgets.QMainWindow):
                 quit,
             ),
         )
+        self.menus.file.aboutToShow.connect(self.updateFileMenu)
+
         self.tools = self.toolbar('Tools')
         # Menu buttons on Left
         self.actions.tool = (
             open_,
+            None,
+            zoomIn,
+            zoom,
+            zoomOut,
+            fitWindow,
+            fitWidth,
         )
 
         self.statusBar().showMessage('%s started.' % self.__appname__)
         self.statusBar().show()
+
+        # Application state.
+        self.image = QtGui.QImage()
+        self.imagePath = None
+        self.recentFiles = []
+        self.maxRecent = 7
+        self.lineColor = None
+        self.fillColor = None
+        self.otherData = None
+        self.zoom_level = 100
+        self.fit_window = False
+        self.filename = filename
+
+        self.updateFileMenu()
 
     def toolbar(self, title, actions=None):
         toolbar = ToolBar(title)
@@ -219,3 +254,131 @@ class MainWindow(QtWidgets.QMainWindow):
         w = self.centralWidget().width() - 2.0
         return w / self.canvas.pixmap.width()
 
+    def updateFileMenu(self):
+        current = self.filename
+
+        def exists(filename):
+            return osp.exists(str(filename))
+
+        menu = self.menus.recentFiles
+        menu.clear()
+        files = [f for f in self.recentFiles if f != current and exists(f)]
+        for i, f in enumerate(files):
+            icon = utils.newIcon('labels')
+            action = QtWidgets.QAction(
+                icon, '&%d %s' % (i + 1, QtCore.QFileInfo(f).fileName()), self)
+            action.triggered.connect(functools.partial(self.loadRecent, f))
+            menu.addAction(action)
+
+    def mayContinue(self):
+        if not self.dirty:
+            return True
+        mb = QtWidgets.QMessageBox
+        msg = 'Save annotations to "{}" before closing?'.format(self.filename)
+        answer = mb.question(self,
+                             'Save annotations?',
+                             msg,
+                             mb.Save | mb.Discard | mb.Cancel,
+                             mb.Save)
+        if answer == mb.Discard:
+            return True
+        elif answer == mb.Save:
+            self.saveFile()
+            return True
+        else:  # answer == mb.Cancel
+            return False
+
+    def loadFile(self, filename=None):
+        """Load the specified file, or the last opened file if None."""
+        # changing fileListWidget loads file
+        # if (filename in self.imageList and
+        #         self.fileListWidget.currentRow() !=
+        #         self.imageList.index(filename)):
+        #     self.fileListWidget.setCurrentRow(self.imageList.index(filename))
+        #     self.fileListWidget.repaint()
+        #     return
+
+        self.resetState()
+        self.canvas.setEnabled(False)
+        if filename is None:
+            filename = self.settings.value('filename', '')
+        filename = str(filename)
+        if not QtCore.QFile.exists(filename):
+            self.errorMessage(
+                'Error opening file', 'No such file: <b>%s</b>' % filename)
+            return False
+        # assumes same name, but json extension
+        self.status("Loading %s..." % osp.basename(str(filename)))
+        label_file = osp.splitext(filename)[0] + '.json'
+        if self.output_dir:
+            label_file_without_path = osp.basename(label_file)
+            label_file = osp.join(self.output_dir, label_file_without_path)
+        if QtCore.QFile.exists(label_file) and \
+                LabelFile.is_label_file(label_file):
+            try:
+                self.labelFile = LabelFile(label_file)
+            except LabelFileError as e:
+                self.errorMessage(
+                    'Error opening file',
+                    "<p><b>%s</b></p>"
+                    "<p>Make sure <i>%s</i> is a valid label file."
+                    % (e, label_file))
+                self.status("Error reading %s" % label_file)
+                return False
+            self.imageData = self.labelFile.imageData
+            self.imagePath = osp.join(
+                osp.dirname(label_file),
+                self.labelFile.imagePath,
+            )
+            if self.labelFile.lineColor is not None:
+                self.lineColor = QtGui.QColor(*self.labelFile.lineColor)
+            if self.labelFile.fillColor is not None:
+                self.fillColor = QtGui.QColor(*self.labelFile.fillColor)
+            self.otherData = self.labelFile.otherData
+        else:
+            self.imageData = LabelFile.load_image_file(filename)
+            if self.imageData:
+                self.imagePath = filename
+            self.labelFile = None
+        image = QtGui.QImage.fromData(self.imageData)
+
+        if image.isNull():
+            formats = ['*.{}'.format(fmt.data().decode())
+                       for fmt in QtGui.QImageReader.supportedImageFormats()]
+            self.errorMessage(
+                'Error opening file',
+                '<p>Make sure <i>{0}</i> is a valid image file.<br/>'
+                'Supported image formats: {1}</p>'
+                .format(filename, ','.join(formats)))
+            self.status("Error reading %s" % filename)
+            return False
+        self.image = image
+        self.filename = filename
+        if self._config['keep_prev']:
+            prev_shapes = self.canvas.shapes
+        self.canvas.loadPixmap(QtGui.QPixmap.fromImage(image))
+        if self._config['flags']:
+            self.loadFlags({k: False for k in self._config['flags']})
+        if self.labelFile:
+            self.loadLabels(self.labelFile.shapes)
+            if self.labelFile.flags is not None:
+                self.loadFlags(self.labelFile.flags)
+        if self._config['keep_prev'] and not self.labelList.shapes:
+            self.loadShapes(prev_shapes, replace=False)
+        self.setClean()
+        self.canvas.setEnabled(True)
+        self.adjustScale(initial=True)
+        self.paintCanvas()
+        self.addRecentFile(self.filename)
+        self.toggleActions(True)
+        self.status("Loaded %s" % osp.basename(str(filename)))
+        return True
+
+    def resetState(self):
+        #self.labelList.clear()
+        self.filename = None
+        self.imagePath = None
+        self.imageData = None
+        #self.labelFile = None
+        self.otherData = None
+        self.canvas.resetState()
