@@ -7,21 +7,20 @@ from PyQt5 import QtWidgets
 from qtpy import QtCore
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
-#from . import utils
 import utils
-from label_file import LabelFile
-from label_file import LabelFileError
-import config
-from config import get_config
-import widgets
+from rstools.label_file import LabelFile
+from rstools.label_file import LabelFileError
+#import rstools.config
+from rstools.config import get_config
+import rstools.widgets
 #from . import widgets
-from widgets import ToolBar
-from widgets import LabelQListWidget
-from widgets import Canvas
-from widgets import ZoomWidget
+from rstools.widgets import ToolBar
+from rstools.widgets import LabelQListWidget
+from rstools.widgets import Canvas
+from rstools.widgets import ZoomWidget
 
 class MainWindow(QtWidgets.QMainWindow):
-    __appname__ = "Rs"
+    __appname__ = "Rs tools"
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = 0, 1, 2
     def __init__(
         self,

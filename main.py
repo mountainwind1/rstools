@@ -5,8 +5,8 @@
 import sys
 #from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication, QDesktopWidget
-from app import MainWindow
-from utils import newIcon
+from rstools.app import MainWindow
+from rstools.utils import newIcon
 
 
 def center(self):

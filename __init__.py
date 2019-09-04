@@ -3,12 +3,12 @@
 
 __appname__ = 'labelme'
 
-import utils
+#import rstools.utils
 
 
-import shape
-import utils
-from .shape import Shape
+#import shape
+import rstools.utils
+from rstools.shape import Shape
 
 __appname__ = 'rstools'
 
