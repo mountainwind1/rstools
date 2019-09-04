@@ -10,7 +10,7 @@ import PIL.Image
 #from labelme import PY2
 #from labelme import QT4
 #from labelme import utils
-import utils
+from rstools import utils
 
 
 class LabelFileError(Exception):

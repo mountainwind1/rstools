@@ -7,7 +7,7 @@ from PyQt5 import QtWidgets
 from qtpy import QtCore
 from PyQt5.QtCore import Qt
 from PyQt5 import QtGui
-import utils
+from rstools import utils
 from rstools.label_file import LabelFile
 from rstools.label_file import LabelFileError
 #import rstools.config
@@ -25,7 +25,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def __init__(
         self,
         config=None,
-        filename=None,):
+        filename=None,
+        output_dir=None,
+        ):
 
         super(MainWindow, self).__init__()
         self.setWindowTitle(self.__appname__)
@@ -146,6 +148,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.statusBar().showMessage('%s started.' % self.__appname__)
         self.statusBar().show()
 
+        self.output_dir = output_dir
         # Application state.
         self.image = QtGui.QImage()
         self.imagePath = None
@@ -368,7 +371,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.canvas.setEnabled(True)
         self.adjustScale(initial=True)
         self.paintCanvas()
-        self.addRecentFile(self.filename)
+        #self.addRecentFile(self.filename)
         self.toggleActions(True)
         self.status("Loaded %s" % osp.basename(str(filename)))
         return True
@@ -381,3 +384,42 @@ class MainWindow(QtWidgets.QMainWindow):
         #self.labelFile = None
         self.otherData = None
         self.canvas.resetState()
+
+    def status(self, message, delay=5000):
+        self.statusBar().showMessage(message, delay)
+
+    def setClean(self):
+        self.dirty = False
+        # self.actions.save.setEnabled(False)
+        # self.actions.createMode.setEnabled(True)
+        # self.actions.createRectangleMode.setEnabled(True)
+        # self.actions.createCircleMode.setEnabled(True)
+        # self.actions.createLineMode.setEnabled(True)
+        # self.actions.createPointMode.setEnabled(True)
+        # self.actions.createLineStripMode.setEnabled(True)
+        title = self.__appname__
+        if self.filename is not None:
+            title = '{} - {}'.format(title, self.filename)
+        self.setWindowTitle(title)
+
+        # if self.hasLabelFile():
+        #     #self.actions.deleteFile.setEnabled(True)
+        # else:
+        #     self.actions.deleteFile.setEnabled(False)
+
+    def adjustScale(self, initial=False):
+        value = self.scalers[self.FIT_WINDOW if initial else self.zoomMode]()
+        self.zoomWidget.setValue(int(100 * value))
+
+    def paintCanvas(self):
+        assert not self.image.isNull(), "cannot paint null image"
+        self.canvas.scale = 0.01 * self.zoomWidget.value()
+        self.canvas.adjustSize()
+        self.canvas.update()
+
+    def toggleActions(self, value=True):
+        """Enable/Disable widgets which depend on an opened image."""
+        # for z in self.actions.zoomActions:
+        #     z.setEnabled(value)
+        # for action in self.actions.onLoadActive:
+        #     action.setEnabled(value)
