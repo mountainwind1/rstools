@@ -17,7 +17,7 @@ def center(self):
 
 def main():
     app = QApplication(sys.argv)
-    app.setWindowIcon(newIcon('icon'))
+    app.setWindowIcon(newIcon('sat'))
     win = MainWindow()
     win.resize(1000, 800)
     center(win)

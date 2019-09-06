@@ -162,6 +162,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.filename = filename
 
         self.updateFileMenu()
+        self.populateModeActions()
 
     def toolbar(self, title, actions=None):
         toolbar = ToolBar(title)
@@ -419,7 +420,25 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def toggleActions(self, value=True):
         """Enable/Disable widgets which depend on an opened image."""
-        # for z in self.actions.zoomActions:
-        #     z.setEnabled(value)
+        for z in self.actions.zoomActions:
+            z.setEnabled(value)
         # for action in self.actions.onLoadActive:
         #     action.setEnabled(value)
+
+    def populateModeActions(self):
+        tool = self.actions.tool
+        self.tools.clear()
+        utils.addActions(self.tools, tool)
+        # self.canvas.menus[0].clear()
+        # utils.addActions(self.canvas.menus[0], menu)
+        # self.menus.edit.clear()
+        # actions = (
+        #     self.actions.createMode,
+        #     self.actions.createRectangleMode,
+        #     self.actions.createCircleMode,
+        #     self.actions.createLineMode,
+        #     self.actions.createPointMode,
+        #     self.actions.createLineStripMode,
+        #     self.actions.editMode,
+        # )
+        # utils.addActions( self.actions.editMenu)
