@@ -8,7 +8,7 @@ import os
 #from labelme impor
 sys.path.append('../')
 sys.path.append(os.getcwd())
-from shape import Shape
+from rstools.shape import Shape
 #from rstools.shape import shape
 #import rstools.utils
 
@@ -621,32 +621,42 @@ class Canvas(QtWidgets.QWidget):
         return super(Canvas, self).minimumSizeHint()
 
     def wheelEvent(self, ev):
-        QT5='1'
-        if QT5:
-            mods = ev.modifiers()
-            delta = ev.angleDelta()
-            if QtCore.Qt.ControlModifier == int(mods):
-                # with Ctrl/Command key
-                # zoom
-                self.zoomRequest.emit(delta.y(), ev.pos())
-            else:
-                # scroll
-                self.scrollRequest.emit(delta.x(), QtCore.Qt.Horizontal)
-                self.scrollRequest.emit(delta.y(), QtCore.Qt.Vertical)
+        # QT5='1'
+        # if QT5:
+        #     mods = ev.modifiers()
+        #     delta = ev.angleDelta()
+        #     if QtCore.Qt.ControlModifier == int(mods):
+        #         # with Ctrl/Command key
+        #         # zoom
+        #         self.zoomRequest.emit(delta.y(), ev.pos())
+        #     else:
+        #         # scroll
+        #         self.scrollRequest.emit(delta.x(), QtCore.Qt.Horizontal)
+        #         self.scrollRequest.emit(delta.y(), QtCore.Qt.Vertical)
+        # else:
+        #     if ev.orientation() == QtCore.Qt.Vertical:
+        #         mods = ev.modifiers()
+        #         if QtCore.Qt.ControlModifier == int(mods):
+        #             # with Ctrl/Command key
+        #             self.zoomRequest.emit(ev.delta(), ev.pos())
+        #         else:
+        #             self.scrollRequest.emit(
+        #                 ev.delta(),
+        #                 QtCore.Qt.Horizontal
+        #                 if (QtCore.Qt.ShiftModifier == int(mods))
+        #                 else QtCore.Qt.Vertical)
+        #     else:
+        #         self.scrollRequest.emit(ev.delta(), QtCore.Qt.Horizontal)
+        mods = ev.modifiers()
+        delta = ev.angleDelta()
+        if QtCore.Qt.ControlModifier == int(mods):
+            # with Ctrl/Command key
+            # zoom
+            self.zoomRequest.emit(delta.y(), ev.pos())
         else:
-            if ev.orientation() == QtCore.Qt.Vertical:
-                mods = ev.modifiers()
-                if QtCore.Qt.ControlModifier == int(mods):
-                    # with Ctrl/Command key
-                    self.zoomRequest.emit(ev.delta(), ev.pos())
-                else:
-                    self.scrollRequest.emit(
-                        ev.delta(),
-                        QtCore.Qt.Horizontal
-                        if (QtCore.Qt.ShiftModifier == int(mods))
-                        else QtCore.Qt.Vertical)
-            else:
-                self.scrollRequest.emit(ev.delta(), QtCore.Qt.Horizontal)
+            # scroll
+            self.scrollRequest.emit(delta.x(), QtCore.Qt.Horizontal)
+            self.scrollRequest.emit(delta.y(), QtCore.Qt.Vertical)
         ev.accept()
 
     def keyPressEvent(self, ev):

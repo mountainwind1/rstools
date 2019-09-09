@@ -19,11 +19,11 @@ def main():
     app = QApplication(sys.argv)
     app.setWindowIcon(newIcon('sat'))
     win = MainWindow()
-    win.resize(1000, 800)
+    #win.resize(1000, 800)
     center(win)
     win.show()
 
-    # win.raise_()
+    win.raise_()
     sys.exit(app.exec_())
 
 if __name__ == "__main__":

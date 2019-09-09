@@ -46,7 +46,11 @@ class MainWindow(QtWidgets.QMainWindow):
         scrollArea = QtWidgets.QScrollArea()
         scrollArea.setWidget(self.canvas)
         scrollArea.setWidgetResizable(True)
-
+        self.scrollBars = {
+            Qt.Vertical: scrollArea.verticalScrollBar(),
+            Qt.Horizontal: scrollArea.horizontalScrollBar(),
+        }
+        self.canvas.scrollRequest.connect(self.scrollRequest)
         self.setCentralWidget(scrollArea)
 
         self.zoomWidget = ZoomWidget()
@@ -161,7 +165,19 @@ class MainWindow(QtWidgets.QMainWindow):
         self.fit_window = False
         self.filename = filename
 
+        # XXX: Could be completely declarative.
+        # Restore application settings.
+        self.settings = QtCore.QSettings('rstools', 'rstools')
+        self.recentFiles = self.settings.value('recentFiles', []) or []
+        size = self.settings.value('window/size', QtCore.QSize(800, 500))
+        position = self.settings.value('window/position', QtCore.QPoint(0, 0))
+        self.resize(size)
+        self.move(position)
+
         self.updateFileMenu()
+
+        # Callbacks:
+        self.zoomWidget.valueChanged.connect(self.paintCanvas)
         self.populateModeActions()
 
     def toolbar(self, title, actions=None):
@@ -252,6 +268,7 @@ class MainWindow(QtWidgets.QMainWindow):
         h2 = self.canvas.pixmap.height() - 0.0
         a2 = w2 / h2
         return w1 / w2 if a2 >= a1 else h1 / h2
+
     def scaleFitWidth(self):
         # The epsilon does not seem to work too well here.
         w = self.centralWidget().width() - 2.0
@@ -442,3 +459,7 @@ class MainWindow(QtWidgets.QMainWindow):
         #     self.actions.editMode,
         # )
         # utils.addActions( self.actions.editMenu)
+    def scrollRequest(self, delta, orientation):
+        units = - delta * 0.1  # natural scroll
+        bar = self.scrollBars[orientation]
+        bar.setValue(bar.value() + bar.singleStep() * units)
