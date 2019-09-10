@@ -173,6 +173,9 @@ class MainWindow(QtWidgets.QMainWindow):
         position = self.settings.value('window/position', QtCore.QPoint(0, 0))
         self.resize(size)
         self.move(position)
+        # self.restoreGeometry(settings['window/geometry']
+        self.restoreState(
+            self.settings.value('window/state', QtCore.QByteArray()))
 
         self.updateFileMenu()
 
@@ -211,17 +214,17 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.scrollBars[Qt.Vertical].value() + y_shift)
 
     def openFile(self, _value=False):
-        if not self.mayContinue():
-            return
+        # if not self.mayContinue():#是否保存本次操作
+        #     return
         path = osp.dirname(str(self.filename)) if self.filename else '.'
         formats = ['*.{}'.format(fmt.data().decode())
                    for fmt in QtGui.QImageReader.supportedImageFormats()]
         # filters = "Image & Label files (%s)" % ' '.join(
         #     formats + ['*%s' % LabelFile.suffix])
-        filters = "Image & Label files (%s)" % ' '.join(
+        filters = "Image(%s)" % ' '.join(
             formats + ['*%s' %  '.json'])
         filename = QtWidgets.QFileDialog.getOpenFileName(
-            self, '%s - Choose Image or Label file' % self.__appname__,
+            self, '%s - Choose Image' % self.__appname__,
             path, filters)
         filename, _ = filename
         filename = str(filename)
@@ -329,37 +332,11 @@ class MainWindow(QtWidgets.QMainWindow):
             return False
         # assumes same name, but json extension
         self.status("Loading %s..." % osp.basename(str(filename)))
-        label_file = osp.splitext(filename)[0] + '.json'
-        if self.output_dir:
-            label_file_without_path = osp.basename(label_file)
-            label_file = osp.join(self.output_dir, label_file_without_path)
-        if QtCore.QFile.exists(label_file) and \
-                LabelFile.is_label_file(label_file):
-            try:
-                self.labelFile = LabelFile(label_file)
-            except LabelFileError as e:
-                self.errorMessage(
-                    'Error opening file',
-                    "<p><b>%s</b></p>"
-                    "<p>Make sure <i>%s</i> is a valid label file."
-                    % (e, label_file))
-                self.status("Error reading %s" % label_file)
-                return False
-            self.imageData = self.labelFile.imageData
-            self.imagePath = osp.join(
-                osp.dirname(label_file),
-                self.labelFile.imagePath,
-            )
-            if self.labelFile.lineColor is not None:
-                self.lineColor = QtGui.QColor(*self.labelFile.lineColor)
-            if self.labelFile.fillColor is not None:
-                self.fillColor = QtGui.QColor(*self.labelFile.fillColor)
-            self.otherData = self.labelFile.otherData
-        else:
-            self.imageData = LabelFile.load_image_file(filename)
-            if self.imageData:
-                self.imagePath = filename
-            self.labelFile = None
+
+        self.imageData = LabelFile.load_image_file(filename)
+        if self.imageData:
+            self.imagePath = filename
+
         image = QtGui.QImage.fromData(self.imageData)
 
         if image.isNull():
@@ -374,17 +351,9 @@ class MainWindow(QtWidgets.QMainWindow):
             return False
         self.image = image
         self.filename = filename
-        if self._config['keep_prev']:
-            prev_shapes = self.canvas.shapes
+
         self.canvas.loadPixmap(QtGui.QPixmap.fromImage(image))
-        if self._config['flags']:
-            self.loadFlags({k: False for k in self._config['flags']})
-        if self.labelFile:
-            self.loadLabels(self.labelFile.shapes)
-            if self.labelFile.flags is not None:
-                self.loadFlags(self.labelFile.flags)
-        if self._config['keep_prev'] and not self.labelList.shapes:
-            self.loadShapes(prev_shapes, replace=False)
+
         self.setClean()
         self.canvas.setEnabled(True)
         self.adjustScale(initial=True)
@@ -463,3 +432,34 @@ class MainWindow(QtWidgets.QMainWindow):
         units = - delta * 0.1  # natural scroll
         bar = self.scrollBars[orientation]
         bar.setValue(bar.value() + bar.singleStep() * units)
+
+    def closeEvent(self, event):
+        if not self.mayContinue():
+            event.ignore()
+        self.settings.setValue(
+            'filename', self.filename if self.filename else '')
+        self.settings.setValue('window/size', self.size())
+        self.settings.setValue('window/position', self.pos())
+        self.settings.setValue('window/state', self.saveState())
+        # self.settings.setValue('line/color', self.lineColor)
+        # self.settings.setValue('fill/color', self.fillColor)
+        self.settings.setValue('recentFiles', self.recentFiles)
+        # ask the use for where to save the labels
+        # self.settings.setValue('window/geometry', self.saveGeometry())
+
+    def mayContinue(self):
+        mb = QtWidgets.QMessageBox
+        msg = 'Save  to "{}" before closing?'.format(self.filename)
+        answer = mb.question(self,
+                             'Save annotations?',
+                             msg,
+                             mb.Save | mb.Discard | mb.Cancel,
+                             mb.Save)
+        if answer == mb.Discard:
+            return True
+        elif answer == mb.Save:
+            #self.saveFile()
+            print('OK')
+            return True
+        else:  # answer == mb.Cancel
+            return False
